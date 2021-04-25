@@ -1,43 +1,35 @@
 from django.core.exceptions import ValidationError
 
-from bowling_api.bowling.models import Game, Frame, Player
+from bowling_api.bowling.models import Roll, Game, Player
 
 
 class BowlingService:
+    def play(self, name):
+        player = self.create_player(name=name)
+        game = self.create_game(player=player)
+
+        return game
+
     def create_player(self, name):
         player = Player.objects.create(name=name)
         return player
 
     def create_game(self, *, player):
         game = Game.objects.create(player=player)
-        Frame.objects.create(game=game, num_in_game=1)
-
         return game
 
-    def update_game(self, *, game_id, roll):
+    def update_game(self, *, game_id, num_pins_down):
         game = Game.objects.get(id=game_id)
 
-        if roll < 0 or roll > 10:
+        if num_pins_down < 0 or num_pins_down > 10:
             raise ValidationError("Must knock down between zero and ten pins")
 
-        frame_count = game.frames.count()
-        frame = game.frames.get(num_in_game=frame_count)
-
-        is_third_roll_allowed = frame_count == 10 and (
-            frame.is_strike or frame.is_strike
+        Roll.objects.create(
+            game=game, num_pins_down=num_pins_down, num_in_game=game.current_roll_num
         )
 
-        if frame.roll_one is None:
-            frame.roll_one = roll
-        elif frame.roll_two is None:
-            frame.roll_two = roll
-        elif is_third_roll_allowed:
-            frame.roll_three = roll
-
-        frame.save()
-
-        if frame_count != 10 and (frame.is_strike or frame.roll_two is not None):
-            Frame.objects.create(game=game, num_in_game=frame_count + 1)
+        game.current_roll_num += 1
+        game.save()
 
         return game
 

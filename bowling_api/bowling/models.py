@@ -1,4 +1,3 @@
-from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
@@ -6,7 +5,6 @@ from django.db import models
 class Player(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    id = models.AutoField(primary_key=True)
 
     name = models.CharField(blank=True, max_length=127)
 
@@ -18,84 +16,77 @@ class Player(models.Model):
 class Game(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    id = models.AutoField(primary_key=True)
 
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="games")
 
+    current_roll_num = models.PositiveSmallIntegerField(
+        blank=True,
+        null=True,
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(21)],
+    )
+
     @property
-    def score(self):
-        return 300  # TODO
+    def total_score(self):
+        frame_scores = self.frame_scores
+        return frame_scores[-1] if len(frame_scores) > 0 else 0
+
+    @property
+    def frame_scores(self):
+        scores = []
+        rolls = self.rolls.order_by("num_in_game").values_list(
+            "num_pins_down", flat=True
+        )
+
+        num_roll = 0
+        rolls_max_index = self.current_roll_num - 1
+        while num_roll + 1 < rolls_max_index:
+            first_roll = rolls[num_roll]
+            second_roll = rolls[num_roll + 1]
+            is_strike = first_roll == 10
+            is_spare = first_roll + second_roll == 10
+            prev_frame_score = scores[-1] if len(scores) else 0
+            frame_score = prev_frame_score
+            if len(scores) == 9:
+                third_roll = (
+                    rolls[num_roll + 2] if num_roll + 2 < rolls_max_index else 0
+                )
+                scores.append(prev_frame_score + first_roll + second_roll + third_roll)
+                break
+
+            if is_strike:
+                if num_roll + 2 > rolls_max_index:
+                    break
+                next_two_rolls = second_roll + rolls[num_roll + 2]
+                frame_score += 10 + next_two_rolls
+                num_roll += 1
+            elif is_spare:
+                if num_roll + 2 > rolls_max_index:
+                    break
+                next_roll = rolls[num_roll + 2]
+                frame_score += 10 + next_roll
+                num_roll += 2
+            else:
+                frame_score += first_roll + second_roll
+                num_roll += 2
+
+            scores.append(frame_score)
+
+        return scores
 
     def __str__(self):
         return f"Game {self.id} with {self.player}"
 
 
-class Frame(models.Model):
+class Roll(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    id = models.AutoField(primary_key=True)
 
-    roll_one = models.PositiveSmallIntegerField(
-        blank=True, null=True, validators=[MaxValueValidator(10)]
-    )
-    roll_two = models.PositiveSmallIntegerField(
-        blank=True, null=True, validators=[MaxValueValidator(10)]
-    )
-    roll_three = models.PositiveSmallIntegerField(
+    num_pins_down = models.PositiveSmallIntegerField(
         blank=True, null=True, validators=[MaxValueValidator(10)]
     )
     num_in_game = models.PositiveSmallIntegerField(
-        blank=True, null=True, validators=[MinValueValidator(1), MaxValueValidator(10)]
+        validators=[MinValueValidator(1), MaxValueValidator(21)]
     )
 
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="frames")
-
-    @property
-    def is_strike(self):
-        return self.roll_one == 10
-
-    @property
-    def is_spare(self):
-        return not self.is_strike and self.roll_one + self.roll_two == 10
-
-    def clean(self):
-        if self.roll_two is not None and self.roll_one is None:
-            raise ValidationError(
-                {"roll_two": "Cannot roll second roll before first roll"}
-            )
-
-        if self.num_in_game == 10:
-            if self.roll_three is not None:
-                if self.roll_one is None:
-                    raise ValidationError(
-                        {"roll_three": "Cannot roll third roll before first roll"}
-                    )
-                if self.roll_two is None:
-                    raise ValidationError(
-                        {"roll_three": "Cannot roll third roll before second roll"}
-                    )
-                if self.roll_one != 10 or self.roll_one + self.roll_two != 10:
-                    raise ValidationError(
-                        {
-                            "roll_three": "Cannot roll third roll without a strike or spare in frame"
-                        }
-                    )
-        else:
-            if self.roll_three is not None:
-                raise ValidationError(
-                    {"roll_three": "Cannot roll third roll in non-tenth frame"}
-                )
-            if self.roll_one == 10 and self.roll_two is not None:
-                raise ValidationError(
-                    {"roll_two": "Cannot roll after strike in non-tenth frame"}
-                )
-            if (self.roll_one is not None and self.roll_two is not None) and (
-                self.roll_one + self.roll_two > 10
-            ):
-                raise ValidationError(
-                    {"roll_two": "Cannot knock down than ten pins in non-tenth frame"}
-                )
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="rolls")
