@@ -1,10 +1,11 @@
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.utils import timezone
 
 
 class Player(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(blank=True)
+    updated_at = models.DateTimeField(blank=True)
 
     name = models.CharField(blank=True, max_length=127)
 
@@ -12,19 +13,19 @@ class Player(models.Model):
         name_postfix = f", {self.name}" if self.name else ""
         return f"Player {self.id}{name_postfix}"
 
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.created_at = timezone.now()
+        self.updated_at = timezone.now()
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
 
 class Game(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(blank=True)
+    updated_at = models.DateTimeField(blank=True)
 
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="games")
-
-    current_roll_num = models.PositiveSmallIntegerField(
-        blank=True,
-        null=True,
-        default=1,
-        validators=[MinValueValidator(1), MaxValueValidator(21)],
-    )
 
     @property
     def total_score(self):
@@ -39,7 +40,7 @@ class Game(models.Model):
         )
 
         num_roll = 0
-        rolls_max_index = self.current_roll_num - 1
+        rolls_max_index = self.rolls.count()
         while num_roll + 1 < rolls_max_index:
             first_roll = rolls[num_roll]
             second_roll = rolls[num_roll + 1]
@@ -77,16 +78,29 @@ class Game(models.Model):
     def __str__(self):
         return f"Game {self.id} with {self.player}"
 
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.created_at = timezone.now()
+        self.updated_at = timezone.now()
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
 
 class Roll(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(blank=True)
+    updated_at = models.DateTimeField(blank=True)
 
-    num_pins_down = models.PositiveSmallIntegerField(
-        blank=True, null=True, validators=[MaxValueValidator(10)]
-    )
+    num_pins_down = models.PositiveSmallIntegerField(validators=[MaxValueValidator(10)])
     num_in_game = models.PositiveSmallIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(21)]
+        blank=True, validators=[MinValueValidator(1), MaxValueValidator(21)]
     )
 
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="rolls")
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.created_at = timezone.now()
+            self.num_in_game = self.game.rolls.count() + 1
+        self.updated_at = timezone.now()
+        self.full_clean()
+        return super().save(*args, **kwargs)

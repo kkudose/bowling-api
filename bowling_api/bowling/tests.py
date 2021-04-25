@@ -1,18 +1,16 @@
 from django.test import TestCase
 
-from bowling_api.bowling.services import bowling_service
+from bowling_api.bowling.models import Roll, Game, Player
 
 
 class BowlingTest(TestCase):
     def setUp(self):
-        self.player = bowling_service.create_player(name="Zesty Zebra")
-        self.game = bowling_service.create_game(player=self.player)
+        self.player = Player.objects.create(name="Zesty Zebra")
+        self.game = Game.objects.create(player=self.player)
 
     def roll(self, num_rolls=1, *, num_pins_down):
         for _ in range(num_rolls):
-            self.game = bowling_service.update_game(
-                game_id=self.game.id, num_pins_down=num_pins_down
-            )
+            Roll.objects.create(game=self.game, num_pins_down=num_pins_down)
 
     def roll_spare(self):
         self.roll(num_rolls=2, num_pins_down=5)
@@ -25,7 +23,6 @@ class BowlingTest(TestCase):
         rolls = self.game.rolls
 
         self.assertEqual(rolls.count(), 20)
-        self.assertEqual(self.game.current_roll_num, 21)
 
         for roll in rolls.all():
             self.assertEqual(roll.num_pins_down, 0)
@@ -37,7 +34,6 @@ class BowlingTest(TestCase):
         rolls = self.game.rolls
 
         self.assertEqual(rolls.count(), 21)
-        self.assertEqual(self.game.current_roll_num, 22)
 
         for roll in rolls.all():
             self.assertEqual(roll.num_pins_down, 5)
@@ -49,7 +45,6 @@ class BowlingTest(TestCase):
         rolls = self.game.rolls
 
         self.assertEqual(rolls.count(), 12)
-        self.assertEqual(self.game.current_roll_num, 13)
 
         for roll in rolls.all():
             self.assertEqual(roll.num_pins_down, 10)
