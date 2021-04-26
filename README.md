@@ -1,6 +1,6 @@
 # About
 
-Tech demo. REST API for bowling scoring using Django (and tastypie).
+Tech demo. REST API for bowling scoring using Django (and tastypie). Meant to represent 4~6 hrs work.
 
 &nbsp;
 # Setup
@@ -13,7 +13,20 @@ Tech demo. REST API for bowling scoring using Django (and tastypie).
 - Admin: http://localhost:8000/admin/
 
 &nbsp;
+# API Use
 
+[HATEOAS](https://restfulapi.net/hateoas/)-supported REST API: http://localhost:8000/api/v1/?format=json
+
+Typical use involves five steps:
+1. Create a player
+2. Create a game
+3. Create a roll
+4. Get the updated game (with scores)
+5. Repeat steps three and four
+
+`Game.frame_scores` has the running scores for each frame as available, or if individual frame scores aren't needed, `Game.total_score` has just the total score.
+
+&nbsp;
 # Other
 
 Note: aliased `poetry run python manage.py` as `pm`
