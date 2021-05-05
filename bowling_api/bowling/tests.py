@@ -60,6 +60,12 @@ class BowlingTest(TestCase):
         frame_one_score = self.game.frame_scores[0]
         self.assertEqual(frame_one_score, 10 + 3)
 
+    def test_spare_unscoreable(self):
+        self.roll_spare()
+
+        self.assertEquals(self.game.rolls.count(), 2)
+        self.assertEqual(len(self.game.frame_scores), 0)
+
     def test_strike(self):
         self.roll_strike()
         self.roll(num_pins_down=3, num_rolls=2)
@@ -70,3 +76,9 @@ class BowlingTest(TestCase):
         self.assertEqual(frame_one_score, 10 + 3 + 3)
         frame_two_score = self.game.frame_scores[1]
         self.assertEqual(frame_two_score, frame_one_score + 3 + 3)
+
+    def test_strike_unscoreable(self):
+        self.roll_strike()
+
+        self.assertEquals(self.game.rolls.count(), 1)
+        self.assertEqual(len(self.game.frame_scores), 0)

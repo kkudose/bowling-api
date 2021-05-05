@@ -56,13 +56,13 @@ class Game(models.Model):
                 break
 
             if is_strike:
-                if num_roll + 2 > rolls_max_index:
+                if num_roll + 2 > rolls_max_index - 1:
                     break
                 next_two_rolls = second_roll + rolls[num_roll + 2]
                 frame_score += 10 + next_two_rolls
                 num_roll += 1
             elif is_spare:
-                if num_roll + 2 > rolls_max_index:
+                if num_roll + 2 > rolls_max_index - 1:
                     break
                 next_roll = rolls[num_roll + 2]
                 frame_score += 10 + next_roll
