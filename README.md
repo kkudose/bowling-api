@@ -1,6 +1,6 @@
 # About
 
-Tech demo (and an excuse to check out [Tastypie](http://tastypieapi.org/)). [Django](https://www.djangoproject.com/) project for a bowling scoring REST API. Meant to represent 4~6 hrs work.
+Take-home assignment where the only given requirement was to expose a REST API for scoring bowling. No skeleton/base was provided. Used [Django](https://www.djangoproject.com/) since I've used it before and [Tastypie](https://django-tastypie.readthedocs.io/en/latest/) since I haven't used it before. Meant to represent 4~6 hrs work.
 
 &nbsp;
 # Setup
